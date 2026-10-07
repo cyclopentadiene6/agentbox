@@ -1,0 +1,34 @@
+name: Fork CI diagnostic
+
+on:
+  push:
+    branches: [ci/fork-ci-probe-20261007]
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm check:plugin-skill
+      - run: pnpm lint
+      - run: pnpm build
+      # `turbo run build` stops at the hub's plain `next build`; the standalone
+      # bundle (what `agentbox hub` actually spawns) is only produced here, and
+      # the wiring check needs it — the relay's cloud-backend injection can only
+      # be verified against built bundles, never from the symlinked dev tree.
+      - run: pnpm --filter @agentbox/hub build:standalone
+      - run: pnpm check:cloud-backends
+      - run: pnpm typecheck
+      - run: pnpm test
